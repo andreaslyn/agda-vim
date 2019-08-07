@@ -5,7 +5,13 @@ function! ReloadSyntax()
     syntax clear
     let f = expand('%:h') . "/." . expand('%:t') . ".vim"
     if filereadable(f)
-        exec "source " . escape(f, '*')
+        for line in readfile(f)
+          let l:s = substitute(line, '\%( "\|\\|\)\@<=\\<', '\\%(^\\|\\s\\|[.(){};]\\)\\@<=', "g")
+          let l:s = substitute(l:s, '\\>\%("$\|\\|\)\@=', '\\%($\\|\\s\\|[.(){};]\\)\\@=', "g")
+          "echo l:s
+          sil exe l:s
+        endfor
+    "    exec "source " . escape(f, '*')
     endif
     runtime syntax/agda.vim
 endfunction
@@ -123,6 +129,9 @@ exec s:python_until_eof
 import vim
 import re
 import subprocess
+
+#DEBUGFILE = open('/tmp/DEBUGFILE', 'a')
+#def debugln(s): DEBUGFILE.write(s + '\n'); DEBUGFILE.flush()
 
 # start Agda
 # TODO: I'm pretty sure this will start an agda process per buffer which is less than desirable...
@@ -343,7 +352,7 @@ def sendCommandLoad(file, quiet):
     if agdaVersion < [2,5,0,0]: # in 2.5 they changed it so Cmd_load takes commandline arguments
         incpaths_str = ",".join(vim.eval("g:agdavim_agda_includepathlist"))
     else:
-        incpaths_str = "\"-i\"," + ",\"-i\",".join(vim.eval("g:agdavim_agda_includepathlist"))
+        incpaths_str = "\"--vim\",\"-i\"," + ",\"-i\",".join(vim.eval("g:agdavim_agda_includepathlist"))
     sendCommand('Cmd_load "%s" [%s]' % (escape(file), incpaths_str), quiet = quiet)
 
 #def getIdentifierAtCursor():
@@ -601,7 +610,7 @@ else:
 EOF
 endfunction
 
-command! -nargs=0 Load call Load(0)
+command! -nargs=0 Load call Load(0)|call ReloadSyntax()
 command! -nargs=0 AgdaVersion call AgdaVersion(0)
 command! -nargs=0 Reload silent! make!|redraw!
 command! -nargs=0 RestartAgda exec s:python_cmd 'RestartAgda()'
@@ -620,7 +629,9 @@ command! -nargs=0 SetRewriteModeSimplified exec s:python_cmd "setRewriteMode('Si
 command! -nargs=0 SetRewriteModeHeadNormal exec s:python_cmd "setRewriteMode('HeadNormal')"
 command! -nargs=0 SetRewriteModeInstantiated exec s:python_cmd "setRewriteMode('Instantiated')"
 
-nnoremap <buffer> <LocalLeader>l :Reload<CR>
+"nnoremap <buffer> <LocalLeader>l :Reload<CR>
+" Reload is too slow.
+nnoremap <buffer> <LocalLeader>l :Load<CR>
 nnoremap <buffer> <LocalLeader>t :call Infer()<CR>
 nnoremap <buffer> <LocalLeader>r :call Refine("False")<CR>
 nnoremap <buffer> <LocalLeader>R :call Refine("True")<CR>
@@ -647,6 +658,9 @@ inoremap <buffer> <silent> <C-g>  <C-o>:let _s=@/<CR><C-o>/ {!\\| ?<CR><C-o>:let
 nnoremap <buffer> <silent> <C-y>  2h:let _s=@/<CR>? {!\\| \?<CR>:let @/=_s<CR>2l
 inoremap <buffer> <silent> <C-y>  <C-o>2h<C-o>:let _s=@/<CR><C-o>? {!\\| \?<CR><C-o>:let @/=_s<CR><C-o>2l
 
-Reload
+"RELOAD is too slow!!
+"Reload
+" show agda version instead:
+AgdaVersion
 
 endif
